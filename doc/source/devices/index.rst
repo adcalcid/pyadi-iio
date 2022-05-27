@@ -44,8 +44,8 @@ Supported Devices
    adi.adis16507
    adi.adl5960
    adi.admv8818
-   adi.adpd188
    adi.adpd1080
+   adi.adpd188
    adi.adpd410x
    adi.adrf5720
    adi.adrv9002
@@ -53,6 +53,7 @@ Supported Devices
    adi.adrv9009_zu11eg
    adi.adrv9009_zu11eg_fmcomms8
    adi.adrv9009_zu11eg_multi
+   adi.adxl313
    adi.adxl345
    adi.adxl355
    adi.adxrs290
