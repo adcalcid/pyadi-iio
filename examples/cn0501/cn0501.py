@@ -173,7 +173,7 @@ class cn0501(ad7768):
             #Progress Display
             counter +=1
             print ("Progress: ",ceil(counter/total_loops*100),'%')
-
+            
             #print("Enabled Channels: ",self.rx_enabled_channels)
             self.power_mode = powers
             #print("Power Mode: ",self.power_mode)

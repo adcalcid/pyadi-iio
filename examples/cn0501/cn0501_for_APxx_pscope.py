@@ -72,7 +72,8 @@ def save_pscope():
     try:
         print("Converting V to ADC Code")
         for x in srate[rates]['DATA'][adc_ch]:
-            data.append(str(vtocode(x)).split('.')[0])
+            #data.append(str(vtocode(x)).split('.')[0])
+            data.append(int(x))
         print("Saving ADC file")
         save_for_pscope(fpath+fpath_sub+fname_dat, 24, True, len(data), "DC0000", "LTC1111", data, data, )   
     except Exception as e_pscope:
@@ -176,6 +177,8 @@ class cn0501(ad7768):
             #print("Power Mode: ",self.power_mode)
             self.filter = filters 
             #print("Filter Type: ",self.filter)
+            #self.data_type = "raw" 
+            #print("Data Type: ",self.data_type)
             self.sample_rate = srate[rates]['SPS'] 
             #print("Sample Rate: ",self.sample_rate)
             self.rx_buffer_size = int(self.sample_rate*2) #max 512000
@@ -297,9 +300,11 @@ while(True):
             raise EndProg
         elif (int(val)>=0 and int(val)<=2):
             print("\n\nEnter Frequency")
-            m2k_f = float(input()) #Frequency Value used on APXX
+            #m2k_f = float(input()) #Frequency Value used on APXX
+            m2k_f = float(1000)
             print("\n\nEnter Vpeak")
-            m2k_vp = float(input()) #Vpeak Values used on APXX max vp=2.5 
+            #m2k_vp = float(input()) #Vpeak Values used on APXX max vp=2.5 
+            m2k_vp =float(1)
             total_loops = loops * len(power_modes) * len(filter_types) * len(srate)
             print("Starting Data Caputre and Storage. ",total_loops," total loops")
             adc_ch = int(val)
@@ -322,7 +327,7 @@ while(True):
                                 mycn0501 = cn0501(uri="ip:169.254.92.202")
                                 mycn0501.run_sample_rate_tests()
                                 write_csv()
-                                save_pscope()
+                                #save_pscope()
                                 del mycn0501
 
                     #cn0501_aux_functions.wav_close(mym2k)                          #DISABLED M2K for APXX CAPTURE

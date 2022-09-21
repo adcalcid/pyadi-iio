@@ -38,14 +38,46 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import cn0501_aux_functions
-from save_for_pscope import save_for_pscope
 print("Python Packages Import done")
 
 from adi.ad7768 import ad7768
 #import libm2k
 #from py_utils.sin_params import *
 from sin_params import *
+from save_for_pscope import save_for_pscope
 print("ADI Packages Import done")
+
+def save_pscope():
+    global srate
+    data = []
+    cwd = os.getcwd() #pyadi-iio branch
+    adc_properties = (str(powers) + "_" + str(filters) + "_" + str(srate[rates]['SPS']))
+
+    #fpath = cwd + "\examples\cn0501\csv_files\CH" + str(ch) + "\\"
+    fpath = cwd + "\examples\cn0501\\adc_files\\"
+    fpath_sub = "\M2K\V_" + str(vpeaks) + "_F_" + str(freqs) +"\CH"+ str(adc_ch) + "\\"
+
+    if(os.path.exists(fpath+fpath_sub)):
+        pass
+    else:
+        print("Creating ADC FILES Folder")
+        os.makedirs(fpath+fpath_sub)
+    fname_dat = "DATA_" + adc_properties + ".adc"
+
+    vtocode = lambda v: int((v/5)*(2**24))
+    #data = srate[rates]['DATA'][adc_ch]
+    try:
+        #print("Converting V to ADC Code")
+        for x in srate[rates]['DATA'][adc_ch]:
+            data.append(str(x).split('.')[0])
+        print("Saving ADC file")
+        save_for_pscope(fpath+fpath_sub+fname_dat, 24, True, len(data), "DC0000", "LTC1111", data, data, )   
+    except Exception as e_pscope:
+        print("Error Pscope Log")
+        print(e_pscope)
+
+    pass
+
 
 def write_csv():
     global srate
@@ -54,17 +86,19 @@ def write_csv():
 
     #fpath = cwd + "\examples\cn0501\csv_files\CH" + str(ch) + "\\"
     fpath = cwd + "\examples\cn0501\csv_files\\"
-    fpath_sub = "\APXX\V_" + str(vpeaks) + "_F_" + str(freqs) +"\CH"+ str(adc_ch) + "\\"
+    fpath_sub = "\M2K\V_" + str(vpeaks) + "_F_" + str(freqs) +"\CH"+ str(adc_ch) + "\\"
+    #fpath_sub = "\M2K_EDITED\V_" + str(vpeaks) + "_F_" + str(freqs) +"\CH"+ str(adc_ch) + "\\"
 
     if(os.path.exists(fpath+fpath_sub)):
         pass
     else:
-        print("Creating Folder")
+        print("Creating CSV FILES Folder")
         os.makedirs(fpath+fpath_sub)
 
     fname_dat = "DATA_" + adc_properties + ".csv"
     fname_param = "SINE_" + adc_properties + ".csv"
     try:
+        print("Saving CSV Data File")
         with open(fpath+fpath_sub+fname_dat, 'w+') as f:
             #print("Storing data to csv")
             if (rec_all is True): #record all channels
@@ -84,20 +118,22 @@ def write_csv():
         print("\n Error Data Log:")
         print(e_data_log)
 
-    try:
-        with open(fpath+fpath_sub+fname_param, 'w') as f:
-            f.write("SNR,THD,SINAD,ENOB,SFDR,FLOOR" + '\n')
-            #print("Storing sine param to csv")
-            for i in range (0, len(srate[rates]['SNR']-1)):
-                f.write(str(srate[rates]['SNR'][i]) + "," + str(srate[rates]['THD'][i]) + "," +
-                        str(srate[rates]['SINAD'][i]) + "," + str(srate[rates]['ENOB'][i]) + "," +
-                        str(srate[rates]['SFDR'][i]) + "," + str(srate[rates]['FLOOR'][i]) + "," + '\n')
-        f.close()
-        #print("---Sine Parameter Log Done---\n\n")
-        
-    except Exception as e_sine_log:
-        print("\n Error Sine Param Log:")
-        print(e_sine_log)
+    print("Saving CSV Sin Params File")
+    if (param_get == True):
+        try:
+            with open(fpath+fpath_sub+fname_param, 'w+') as f:
+                f.write("SNR,THD,SINAD,ENOB,SFDR,FLOOR" + '\n')
+                #print("Storing sine param to csv")
+                for i in range (0, len(srate[rates]['SNR'])):                
+                    f.write(str(srate[rates]['SNR'][i]) + "," + str(srate[rates]['THD'][i]) + "," +
+                            str(srate[rates]['SINAD'][i]) + "," + str(srate[rates]['ENOB'][i]) + "," +
+                            str(srate[rates]['SFDR'][i]) + "," + str(srate[rates]['FLOOR'][i]) + "," + '\n')
+            f.close()
+            #print("---Sine Parameter Log Done---\n\n")
+            
+        except Exception as e_sine_log:
+            print("\n Error Sine Param Log:")
+            print(e_sine_log)
 
 class EndProg( Exception ): pass
 
@@ -109,7 +145,7 @@ class cn0501(ad7768):
         ad7768.__init__(self, uri=uri)
 
     def single_capture(self):
-        self.power_mode = "FAST_MODE" #FAST_MODE MEDIAN_MODE LOW_POWER_MODE //ONLY FAST_MODE IS WORKING
+        self.power_mode = "FAST_MODE" #FAST_MODE MEDIAN_MODE LOW_POWER_MODE
         self.filter = "WIDEBAND" #WIDEBAND SINC5
         self.sample_rate = 16000
         self.rx_buffer_size = self.sample_rate*2
@@ -139,6 +175,8 @@ class cn0501(ad7768):
             print ("Progress: ",ceil(counter/total_loops*100),'%')
             
             #print("Enabled Channels: ",self.rx_enabled_channels)
+            self.data_type = "raw"
+            #print("Output data type: ",self.data_type)
             self.power_mode = powers
             #print("Power Mode: ",self.power_mode)
             self.filter = filters 
@@ -147,6 +185,7 @@ class cn0501(ad7768):
             #print("Sample Rate: ",self.sample_rate)
             self.rx_buffer_size = int(self.sample_rate*2) #max 512000
             if self.rx_buffer_size > 512000: self.rx_buffer_size = 512000
+            #self.rx_buffer_size = 512000
             #print("Buffer Size: ",self.rx_buffer_size)
 
             sec_rec = ceil(self.sample_rate/self.rx_buffer_size*nsecs/2) #use for n sec worth
@@ -166,6 +205,7 @@ class cn0501(ad7768):
                 #Capture data of last loop
                 if (nloop == loops-1):
                     srate[rates]['DATA'] = vdata
+
                 #Compute Sine parameters
                 if(param_get == True):
                     #print("Calculating Sine Parameters")
@@ -191,7 +231,7 @@ class cn0501(ad7768):
             #print("---Data Capture Done---\n\n")
         
         #Plot Average of Sine Params
-        if(param_get == True and plot_show==True):
+        if(plot_show==True):
             snr_arr = []
             thd_arr =[]
             sinad_arr = []
@@ -208,25 +248,26 @@ class cn0501(ad7768):
                 enob_arr = np.concatenate((enob_arr,[np.average(srate[i]['ENOB'])]),axis=0)
                 sfdr_arr = np.concatenate((sfdr_arr,[np.average(srate[i]['SFDR'])]),axis=0)
                 floor_arr = np.concatenate((floor_arr,[np.average(srate[i]['FLOOR'])]),axis=0)
-
-            plt.figure(101)
-            plt.title("SNR")
-            plt.plot(sr,snr_arr,marker="s")
-            plt.figure(102)
-            plt.title("THD")
-            plt.plot(sr,thd_arr,marker="s")
-            plt.figure(103)
-            plt.title("SINAD")
-            plt.plot(sr,sinad_arr,marker="s")
-            plt.figure(104)
-            plt.title("ENOB")
-            plt.plot(sr,enob_arr,marker="s")
-            plt.figure(105)
-            plt.title("SFDR")
-            plt.plot(sr,sfdr_arr,marker="s")
-            plt.figure(106)
-            plt.title("FLOOR")
-            plt.plot(sr,floor_arr,marker="s")           
+            
+            if (plot_show == True):
+                plt.figure(101)
+                plt.title("SNR")
+                plt.plot(sr,snr_arr,marker="s")
+                plt.figure(102)
+                plt.title("THD")
+                plt.plot(sr,thd_arr,marker="s")
+                plt.figure(103)
+                plt.title("SINAD")
+                plt.plot(sr,sinad_arr,marker="s")
+                plt.figure(104)
+                plt.title("ENOB")
+                plt.plot(sr,enob_arr,marker="s")
+                plt.figure(105)
+                plt.title("SFDR")
+                plt.plot(sr,sfdr_arr,marker="s")
+                plt.figure(106)
+                plt.title("FLOOR")
+                plt.plot(sr,floor_arr,marker="s")           
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 #TEST PARAMETER VALUES
@@ -234,76 +275,80 @@ param_get = True
 plot_show = False
 rec_all = False
 loops = 1 #loops per channel 
-nsecs = 2 #even number
+nsecs = 1 #even number
 
 #ADC TEST MODES
-#power_modes = ['LOW_POWER_MODE', 'MEDIAN_MODE', 'FAST_MODE'] //ONLY FAST_MODE IS WORKING
-#filter_types= ['WIDEBAND', 'SINC5']
+#power_modes = ['LOW_POWER_MODE', 'MEDIAN_MODE', 'FAST_MODE']
 power_modes = ['FAST_MODE']
 filter_types= ['WIDEBAND']
 
+#M2K TEST OUTPUTS
+m2k_f = [1000] #Frequency Values
+#m2k_f = [10,1000]
+m2k_vp = [2.5] #Vpeak Values  max vp=2.5
 
-srate = {0: {'SPS': 8000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': []},
-                1: {'SPS': 16000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': []},
-                2: {'SPS': 32000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': []},
-                3: {'SPS': 64000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': []},
-                4: {'SPS': 128000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': []},
-                5: {'SPS': 256000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': []}}
+srate = {0: {'SPS': 8000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': [],'CODE':[]},
+                1: {'SPS': 16000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': [], 'CODE':[]},
+                2: {'SPS': 32000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': [],'CODE':[]},
+                3: {'SPS': 64000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': [],'CODE':[]},
+                4: {'SPS': 128000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': [],'CODE':[]},
+                5: {'SPS': 256000, 'DATA': [], 'HARMONICS': [],'SNR': [],'THD': [],'SINAD': [],'ENOB': [],'SFDR': [],'FLOOR': [],'CODE':[]}}
 
+total_loops = loops * len(m2k_f) * len(m2k_vp) * len(power_modes) * len(filter_types) * len(srate)
 
-while(True):
-    try:
+try:
+    # Instantiate hardware
+    #mym2k = cn0501_aux_functions.wav_init()
+    #mycn0501 = cn0501(uri="ip:analog.local")
+    #mycn0501 = cn0501(uri="ip:169.254.92.202")
+
+    # Pick M2K output
+    #cn0501_aux_functions.wavdiff_out(mym2k)
+    #cn0501_aux_functions.seismic_out(mym2k)
+
+    while(True):
         counter = 0
         print("\n\nEnter GP CHANNEL, x:0 y:1 z:2 exit:-1")
         val = input()
-        
-        
         if (int(val) == -1):
             print("Ending Program...")
             raise EndProg
         elif (int(val)>=0 and int(val)<=2):
-            print("\n\nEnter Frequency")
-            m2k_f = float(input()) #Frequency Value used on APXX
-            print("\n\nEnter Vpeak")
-            m2k_vp = float(input()) #Vpeak Values used on APXX max vp=2.5 
-            total_loops = loops * len(power_modes) * len(filter_types) * len(srate)
             print("Starting Data Caputre and Storage. ",total_loops," total loops")
             adc_ch = int(val)
-            for vpeaks in range(0,1):
-                for freqs in range(0,1):
-                    vpeaks = m2k_vp
-                    freqs = m2k_f
-                    #mym2k = cn0501_aux_functions.wav_init()                        #DISABLED M2K for APXX CAPTURE
-                    #cn0501_aux_functions.sine_buffer_generator(mym2k, vp=vpeaks, f=freqs)    #DISABLED M2K for APXX CAPTURE
+            for vpeaks in m2k_vp:
+                for freqs in m2k_f:
+                    mym2k = cn0501_aux_functions.wav_init()
+                    cn0501_aux_functions.sine_1k_out(mym2k, vp=vpeaks, f=freqs)  
                     sec_delay(2)
 
                     for powers in power_modes:
                         for filters in filter_types:
-                            for rates in range(len(srate)-1,-1,-1):
+                            for rates in range(5,-1,-1):
                                 if (powers == 'MEDIAN_MODE'):  rates = 4 #128kps max on MEDIAN mode 
                                 elif (powers == 'LOW_POWER_MODE'): rates = 2 #32ksps max on LOW POWER mode
 
                                 #print("M2K Output: Vp=",vpeaks," Freq=",freqs)
-                                #mycn0501 = cn0501(uri="ip:analog.local")
                                 mycn0501 = cn0501(uri="ip:169.254.92.202")
-                                print("here")
                                 mycn0501.run_sample_rate_tests()
                                 write_csv()
+                                save_pscope()
 
                                 del mycn0501
 
-                    #cn0501_aux_functions.wav_close(mym2k)                          #DISABLED M2K for APXX CAPTURE
+                    cn0501_aux_functions.wav_close(mym2k)
         else:
                 raise ChErr
 
         if (plot_show == True):
             plt.show()
-    except EndProg:
-        #print("Close M2K handler")
-        #cn0501_aux_functions.wav_close(mym2k)                                           #DISABLED M2K for APXX CAPTURE
-        break
-    except ChErr:
-        print("\nEnter valid value")
-    except Exception as e:
-        print("\n Error:")
-        print(e)
+        
+except EndProg:
+    print("Close M2K handler")
+    cn0501_aux_functions.wav_close(mym2k)
+    pass
+except ChErr:
+    print("\nEnter valid value")
+except Exception as e:
+    print("\n Error:")
+    print(e)
