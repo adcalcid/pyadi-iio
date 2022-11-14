@@ -311,7 +311,7 @@ try:
             print("Ending Program...")
             raise EndProg
         elif (int(val)>=0 and int(val)<=2):
-            print("Starting Data Caputre and Storage. ",total_loops," total loops")
+            print("Starting Data Capture and Storage. ",total_loops," total loops")
             adc_ch = int(val)
             for vpeaks in m2k_vp:
                 for freqs in m2k_f:
